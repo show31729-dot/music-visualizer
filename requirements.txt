@@ -1,0 +1,9 @@
+flask
+librosa
+opencv-python
+moviepy
+tqdm
+numpy
+scipy
+soundfile
+imageio_ffmpeg

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Visualizer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+
+  /* ── Header ── */
+  header { text-align: center; margin-bottom: 48px; }
+  header h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6ee7f7, #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  header p { color: #888; margin-top: 8px; font-size: 0.95rem; }
+
+  /* ── Main Card ── */
+  .card {
+    background: #13131a;
+    border: 1px solid #222230;
+    border-radius: 20px;
+    padding: 36px;
+    width: 100%;
+    max-width: 720px;
+  }
+
+  /* ── Drop Zone ── */
+  .drop-zone {
+    border: 2px dashed #333345;
+    border-radius: 14px;
+    padding: 48px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: #6ee7f7;
+    background: rgba(110,231,247,0.04);
+  }
+  .drop-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+  .drop-zone .icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .drop-zone .label { color: #aaa; font-size: 0.95rem; }
+  .drop-zone .label span { color: #6ee7f7; }
+  .drop-zone .formats { color: #555; font-size: 0.8rem; margin-top: 6px; }
+  .file-name {
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: #a78bfa;
+    font-weight: 500;
+    min-height: 1.2em;
+  }
+
+  /* ── Style Selector ── */
+  .section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666;
+    margin: 28px 0 14px;
+  }
+
+  .styles-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .style-card {
+    border: 2px solid #222230;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    user-select: none;
+  }
+  .style-card:hover { border-color: #444466; background: #1a1a24; }
+  .style-card.selected {
+    border-color: #a78bfa;
+    background: rgba(167,139,250,0.08);
+  }
+  .style-card input { display: none; }
+  .style-icon { font-size: 1.8rem; flex-shrink: 0; }
+  .style-info { flex: 1; }
+  .style-name { font-weight: 600; font-size: 0.95rem; }
+  .style-desc { color: #666; font-size: 0.78rem; margin-top: 3px; line-height: 1.4; }
+
+  /* ── Color Section ── */
+  .presets-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .preset-chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 2px solid #222230;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: all 0.18s;
+    user-select: none;
+    background: #13131a;
+  }
+  .preset-chip:hover { border-color: #444466; }
+  .preset-chip.selected { border-color: #a78bfa; background: rgba(167,139,250,0.1); }
+  .preset-chip input { display: none; }
+  .swatch {
+    width: 40px;
+    height: 12px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  /* 自訂色票區 */
+  .custom-colors {
+    margin-top: 14px;
+    padding: 16px;
+    border: 1px dashed #333345;
+    border-radius: 12px;
+    display: none;
+  }
+  .custom-colors.show { display: block; }
+  .custom-colors-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .color-stop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    color: #888;
+  }
+  .color-stop input[type="color"] {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 2px;
+    background: #1e1e2a;
+  }
+  .btn-add-stop, .btn-remove-stop {
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid #333345;
+    background: #1e1e2a;
+    color: #aaa;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-add-stop:hover { border-color: #6ee7f7; color: #6ee7f7; }
+  .btn-remove-stop:hover { border-color: #f87171; color: #f87171; }
+
+  .gradient-preview {
+    height: 12px;
+    border-radius: 6px;
+    margin-top: 8px;
+  }
+
+  /* ── Generate Button ── */
+  .btn-generate {
+    width: 100%;
+    margin-top: 28px;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6ee7f7, #a78bfa);
+    color: #0a0a0f;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    letter-spacing: 0.3px;
+  }
+  .btn-generate:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+  .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ── Progress ── */
+  .progress-section {
+    margin-top: 28px;
+    display: none;
+  }
+  .progress-section.show { display: block; }
+
+  .progress-bar-wrap {
+    background: #1e1e2a;
+    border-radius: 8px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #6ee7f7, #a78bfa);
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: #888;
+  }
+  .progress-msg { flex: 1; }
+  .progress-pct { font-weight: 600; color: #a78bfa; }
+
+  /* ── Result ── */
+  .result-section {
+    margin-top: 20px;
+    display: none;
+  }
+  .result-section.show { display: block; }
+
+  .btn-download {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px;
+    border: 2px solid #22c55e;
+    border-radius: 12px;
+    background: rgba(34,197,94,0.08);
+    color: #22c55e;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .btn-download:hover { background: rgba(34,197,94,0.15); }
+
+  .error-box {
+    padding: 14px 16px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 10px;
+    color: #f87171;
+    font-size: 0.88rem;
+    display: none;
+  }
+  .error-box.show { display: block; }
+
+  /* ── Animated bars indicator ── */
+  .bars-indicator {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 18px;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .bars-indicator span {
+    display: inline-block;
+    width: 3px;
+    background: #a78bfa;
+    border-radius: 2px;
+    animation: bounce 1s ease-in-out infinite;
+  }
+  .bars-indicator span:nth-child(2) { animation-delay: 0.15s; }
+  .bars-indicator span:nth-child(3) { animation-delay: 0.3s; }
+  .bars-indicator span:nth-child(4) { animation-delay: 0.45s; }
+  @keyframes bounce {
+    0%, 100% { height: 4px; }
+    50% { height: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎵 Music Visualizer</h1>
+  <p>上傳音樂，選擇風格，自動輸出 MP4 視覺化影片</p>
+</header>
+
+<div class="card">
+
+  <!-- 上傳區 -->
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="audioInput" accept=".mp3,.wav,.flac,.m4a,.ogg,.aac">
+    <div class="icon">🎧</div>
+    <div class="label">拖曳音檔到這裡，或 <span>點擊選擇</span></div>
+    <div class="formats">支援 MP3 · WAV · FLAC · M4A · OGG · AAC（最大 500MB）</div>
+    <div class="file-name" id="fileName"></div>
+  </div>
+
+  <!-- 風格選擇 -->
+  <div class="section-title">選擇視覺化風格</div>
+  <div class="styles-grid">
+    <label class="style-card selected" data-style="1">
+      <input type="radio" name="style" value="1" checked>
+      <div class="style-icon">📊</div>
+      <div class="style-info">
+        <div class="style-name">頻譜柱狀 Bar</div>
+        <div class="style-desc">均衡器跳動效果，底部鏡像反射</div>
+      </div>
+    </label>
+    <label class="style-card" data-style="2">
+      <input type="radio" name="style" value="2">
+      <div class="style-icon">⭕</div>
+      <div class="style-info">
+        <div class="style-name">環形波形 Circular</div>
+        <div class="style-desc">圓形輻射，Lo-fi 封面感中心光球</div>
+      </div>
+    </label>
+    <label class="style-card" data-style="3">
+      <input type="radio" name="style" value="3">
+      <div class="style-icon">〰️</div>
+      <div class="style-info">
+        <div class="style-name">線性波形 Waveform</div>
+        <div class="style-desc">流動波浪線，簡潔掃光效果</div>
+      </div>
+    </label>
+    <label class="style-card" data-style="4">
+      <input type="radio" name="style" value="4">
+      <div class="style-icon">✨</div>
+      <div class="style-info">
+        <div class="style-name">粒子爆炸 Particles</div>
+        <div class="style-desc">節拍爆發粒子，視覺衝擊強烈</div>
+      </div>
+    </label>
+  </div>
+
+  <!-- 顏色主題 -->
+  <div class="section-title">選擇顏色主題</div>
+  <div class="presets-row" id="presetsRow">
+    <label class="preset-chip selected" data-preset="rainbow">
+      <input type="radio" name="colorPreset" value="rainbow" checked>
+      <span class="swatch" style="background:linear-gradient(90deg,#5000ff,#00c8ff,#00ff50,#ffff00,#ff7800,#ff0000)"></span>
+      彩虹
+    </label>
+    <label class="preset-chip" data-preset="fire">
+      <input type="radio" name="colorPreset" value="fire">
+      <span class="swatch" style="background:linear-gradient(90deg,#140050,#5000c8,#c82800,#ff8c00,#ffdc00,#ffffb4)"></span>
+      火焰
+    </label>
+    <label class="preset-chip" data-preset="ocean">
+      <input type="radio" name="colorPreset" value="ocean">
+      <span class="swatch" style="background:linear-gradient(90deg,#000a3c,#003ca0,#00a0dc,#00dcff,#78f0ff,#ffffff)"></span>
+      海洋
+    </label>
+    <label class="preset-chip" data-preset="neon">
+      <input type="radio" name="colorPreset" value="neon">
+      <span class="swatch" style="background:linear-gradient(90deg,#3c0078,#8c00c8,#c800b4,#ff0078,#ff50c8,#ffc8ff)"></span>
+      霓虹紫
+    </label>
+    <label class="preset-chip" data-preset="forest">
+      <input type="radio" name="colorPreset" value="forest">
+      <span class="swatch" style="background:linear-gradient(90deg,#001e00,#005014,#00a028,#50dc00,#c8ff00,#ffff78)"></span>
+      森林
+    </label>
+    <label class="preset-chip" data-preset="mono">
+      <input type="radio" name="colorPreset" value="mono">
+      <span class="swatch" style="background:linear-gradient(90deg,#141414,#3c3c50,#7878a0,#b4b4dc,#dcdcf0,#ffffff)"></span>
+      單色
+    </label>
+    <label class="preset-chip" data-preset="custom">
+      <input type="radio" name="colorPreset" value="custom">
+      <span style="font-size:1rem">🎨</span>
+      自訂…
+    </label>
+  </div>
+
+  <!-- 自訂色票 -->
+  <div class="custom-colors" id="customColors">
+    <div style="font-size:0.82rem;color:#888;margin-bottom:10px;">拖動色票可以調整順序，最少 2 個、最多 8 個</div>
+    <div class="custom-colors-row" id="stopsRow"></div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="btn-add-stop" id="btnAddStop">＋ 新增色票</button>
+      <button class="btn-remove-stop" id="btnRemoveStop">－ 刪除最後一個</button>
+    </div>
+    <div class="gradient-preview" id="gradientPreview"></div>
+  </div>
+
+  <!-- 按鈕 -->
+  <button class="btn-generate" id="btnGenerate" disabled>選擇音檔後開始生成</button>
+
+  <!-- 進度條 -->
+  <div class="progress-section" id="progressSection">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-label">
+      <div class="progress-msg" id="progressMsg">
+        <span class="bars-indicator">
+          <span></span><span></span><span></span><span></span>
+        </span>
+        準備中...
+      </div>
+      <div class="progress-pct" id="progressPct">0%</div>
+    </div>
+  </div>
+
+  <!-- 下載 -->
+  <div class="result-section" id="resultSection">
+    <a class="btn-download" id="downloadBtn" href="#" download>
+      ⬇️ 下載 MP4 影片
+    </a>
+  </div>
+
+  <!-- 錯誤 -->
+  <div class="error-box" id="errorBox"></div>
+
+</div>
+
+<script>
+const dropZone  = document.getElementById("dropZone");
+const audioInput = document.getElementById("audioInput");
+const fileName  = document.getElementById("fileName");
+const btnGen    = document.getElementById("btnGenerate");
+const progressSection = document.getElementById("progressSection");
+const progressFill = document.getElementById("progressFill");
+const progressMsg  = document.getElementById("progressMsg");
+const progressPct  = document.getElementById("progressPct");
+const resultSection = document.getElementById("resultSection");
+const downloadBtn  = document.getElementById("downloadBtn");
+const errorBox    = document.getElementById("errorBox");
+const customColors  = document.getElementById("customColors");
+const stopsRow    = document.getElementById("stopsRow");
+const gradientPreview = document.getElementById("gradientPreview");
+
+let selectedFile = null;
+
+// ── 預設色票對應的 hex（與後端 PRESETS 一致，用來初始化自訂時複製）
+const PRESET_COLORS = {
+  rainbow: ["#5000ff","#00c8ff","#00ff50","#ffff00","#ff7800","#ff0000"],
+  fire:    ["#140050","#5000c8","#c82800","#ff8c00","#ffdc00","#ffffb4"],
+  ocean:   ["#000a3c","#003ca0","#00a0dc","#00dcff","#78f0ff","#ffffff"],
+  neon:    ["#3c0078","#8c00c8","#c800b4","#ff0078","#ff50c8","#ffc8ff"],
+  forest:  ["#001e00","#005014","#00a028","#50dc00","#c8ff00","#ffff78"],
+  mono:    ["#141414","#3c3c50","#7878a0","#b4b4dc","#dcdcf0","#ffffff"],
+};
+
+// ── 自訂色票管理 ──
+let customStops = ["#0050ff","#a000ff","#ff0080"];
+
+function renderStops() {
+  stopsRow.innerHTML = "";
+  customStops.forEach((hex, i) => {
+    const wrap = document.createElement("div");
+    wrap.className = "color-stop";
+    const inp = document.createElement("input");
+    inp.type = "color"; inp.value = hex;
+    inp.addEventListener("input", () => { customStops[i] = inp.value; updateGradient(); });
+    const lbl = document.createElement("span");
+    lbl.textContent = `色票 ${i + 1}`;
+    wrap.append(inp, lbl);
+    stopsRow.appendChild(wrap);
+  });
+  updateGradient();
+}
+
+function updateGradient() {
+  gradientPreview.style.background =
+    `linear-gradient(90deg, ${customStops.join(",")})`;
+}
+
+document.getElementById("btnAddStop").addEventListener("click", () => {
+  if (customStops.length >= 8) return;
+  customStops.push("#ffffff");
+  renderStops();
+});
+document.getElementById("btnRemoveStop").addEventListener("click", () => {
+  if (customStops.length <= 2) return;
+  customStops.pop();
+  renderStops();
+});
+
+// ── 顏色 preset 切換 ──
+document.querySelectorAll(".preset-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll(".preset-chip").forEach(c => c.classList.remove("selected"));
+    chip.classList.add("selected");
+    chip.querySelector("input").checked = true;
+    const preset = chip.dataset.preset;
+    if (preset === "custom") {
+      customColors.classList.add("show");
+    } else {
+      customColors.classList.remove("show");
+      // 切換到非自訂時，同步 customStops 以供之後切回自訂使用
+      if (PRESET_COLORS[preset]) customStops = [...PRESET_COLORS[preset]];
+      renderStops();
+    }
+  });
+});
+
+// 初始化色票
+renderStops();
+
+// ── 取得目前顏色設定（回傳傳給後端的字串）──
+function getColorsParam() {
+  const preset = document.querySelector("input[name=colorPreset]:checked").value;
+  if (preset !== "custom") return preset;
+  return JSON.stringify(customStops);
+}
+
+// ── 拖曳 ──
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("drag-over");
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+audioInput.addEventListener("change", () => { if (audioInput.files[0]) setFile(audioInput.files[0]); });
+
+function setFile(f) {
+  selectedFile = f;
+  fileName.textContent = `📄 ${f.name}  (${(f.size / 1024 / 1024).toFixed(1)} MB)`;
+  btnGen.disabled = false;
+  btnGen.textContent = "開始生成";
+  resetResult();
+}
+
+// ── 風格卡片 ──
+document.querySelectorAll(".style-card").forEach(card => {
+  card.addEventListener("click", () => {
+    document.querySelectorAll(".style-card").forEach(c => c.classList.remove("selected"));
+    card.classList.add("selected");
+    card.querySelector("input").checked = true;
+  });
+});
+
+// ── 重置 ──
+function resetResult() {
+  progressSection.classList.remove("show");
+  resultSection.classList.remove("show");
+  errorBox.classList.remove("show");
+  progressFill.style.width = "0%";
+  progressMsg.innerHTML = `<span class="bars-indicator"><span></span><span></span><span></span><span></span></span>準備中...`;
+  progressPct.textContent = "0%";
+}
+
+// ── 生成 ──
+btnGen.addEventListener("click", async () => {
+  if (!selectedFile) return;
+  resetResult();
+  btnGen.disabled = true;
+  btnGen.textContent = "處理中...";
+  progressSection.classList.add("show");
+
+  const form = new FormData();
+  form.append("audio", selectedFile);
+  const style = document.querySelector("input[name=style]:checked").value;
+  form.append("style", style);
+  form.append("colors", getColorsParam());
+
+  let taskId;
+  try {
+    const res = await fetch("/generate", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "上傳失敗");
+    taskId = data.task_id;
+  } catch (e) {
+    showError(e.message);
+    return;
+  }
+
+  // SSE 進度
+  const sse = new EventSource(`/progress/${taskId}`);
+  sse.onmessage = e => {
+    const info = JSON.parse(e.data);
+    progressFill.style.width = info.progress + "%";
+    progressPct.textContent = info.progress + "%";
+
+    if (info.status === "running" || info.status === "pending") {
+      progressMsg.innerHTML = `<span class="bars-indicator"><span></span><span></span><span></span><span></span></span>${info.message}`;
+    }
+
+    if (info.status === "done") {
+      sse.close();
+      progressMsg.textContent = "✅ 完成！";
+      resultSection.classList.add("show");
+      downloadBtn.href = `/download/${info.output}`;
+      downloadBtn.download = info.output.split("_").slice(2).join("_");
+      btnGen.disabled = false;
+      btnGen.textContent = "再次生成";
+    }
+    if (info.status === "error") {
+      sse.close();
+      showError(info.message);
+    }
+  };
+  sse.onerror = () => {
+    sse.close();
+    showError("連線中斷，請重試");
+  };
+});
+
+function showError(msg) {
+  progressSection.classList.remove("show");
+  errorBox.textContent = "❌ " + msg;
+  errorBox.classList.add("show");
+  btnGen.disabled = false;
+  btnGen.textContent = "重試";
+}
+</script>
+</body>
+</html>

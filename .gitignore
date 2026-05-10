@@ -1,0 +1,12 @@
+uploads/*
+outputs/*
+!uploads/.gitkeep
+!outputs/.gitkeep
+__pycache__/
+*.pyc
+.DS_Store
+*.mp4
+*.wav
+*.mp3
+*.flac
+*.m4a
